@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vet Link — Pet Profile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Text:wght@700;900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy-deep:#0E141A; --navy-panel:#161F28; --navy-panel-2:#1C2732;
+    --steel-light:#CBD2D9; --steel-mid:#8C97A3; --steel-dim:#5B6772;
+    --tag-orange:#FF5C29; --vial-mint:#8FE3C0; --white:#F4F6F8;
+    --font-display:'Big Shoulders Stencil Text', sans-serif;
+    --font-body:'IBM Plex Sans', sans-serif;
+    --font-mono:'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--navy-deep); color:var(--white);
+    font-family:var(--font-body); min-height:100vh;
+    display:flex; align-items:flex-start; justify-content:center;
+    padding:40px 20px;
+  }
+  .card{
+    width:100%; max-width:420px;
+    background:var(--navy-panel);
+    border:1px solid rgba(203,210,217,.14);
+    border-radius:24px;
+    overflow:hidden;
+  }
+  .card-head{
+    background:var(--navy-panel-2);
+    padding:28px 24px 22px;
+    text-align:center;
+    border-bottom:1px solid rgba(203,210,217,.14);
+  }
+  .eyebrow{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--vial-mint); margin:0 0 10px;
+  }
+  .avatar{
+    width:72px;height:72px;border-radius:50%;
+    background:var(--tag-orange); color:var(--navy-deep);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-display); font-size:30px;
+    margin:0 auto 14px;
+  }
+  h1{
+    font-family:var(--font-display); text-transform:uppercase;
+    font-size:34px; margin:0;
+  }
+  .status-badge{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--vial-mint);
+    margin-top:10px;
+  }
+  .status-badge::before{content:"●";}
+  .section{padding:22px 24px; border-bottom:1px solid rgba(203,210,217,.1);}
+  .section:last-child{border-bottom:none;}
+  .section h2{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--steel-dim); margin:0 0 12px;
+  }
+  .row{
+    display:flex; justify-content:space-between; gap:12px;
+    font-size:14px; padding:8px 0;
+    border-top:1px dashed rgba(203,210,217,.12);
+  }
+  .row:first-child{border-top:none;}
+  .row span:first-child{color:var(--steel-mid);}
+  .row span:last-child{color:var(--white); text-align:right;}
+  .contact-btn{
+    display:block; text-align:center; text-decoration:none;
+    background:var(--tag-orange); color:var(--navy-deep);
+    font-family:var(--font-mono); font-weight:600; letter-spacing:.04em;
+    text-transform:uppercase; font-size:13px;
+    padding:14px; border-radius:100px; margin-top:6px;
+  }
+  .found-note{
+    font-size:13px; color:var(--steel-mid); margin:0 0 14px;
+  }
+  .footer-note{
+    text-align:center; font-family:var(--font-mono); font-size:10px;
+    color:var(--steel-dim); letter-spacing:.05em; padding:18px 24px;
+  }
+  .directory{
+    text-align:center; padding:60px 20px;
+  }
+  .directory a{
+    display:block; margin-top:10px; color:var(--vial-mint);
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<!-- Firebase (Firestore) -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<script>
+  // -----------------------------------------------------------------------
+  // PASTE THE SAME FIREBASE CONFIG YOU USED IN index.html — this must match
+  // exactly, since both files read/write the same "pets" collection.
+  // -----------------------------------------------------------------------
+  const firebaseConfig = {
+    apiKey: "AIzaSyCYqnAwl_MaSA7qv3FkCUa9-VUN_OhJwjc",
+    authDomain: "vetlink-b046b.firebaseapp.com",
+    projectId: "vetlink-b046b",
+    storageBucket: "vetlink-b046b.firebasestorage.app",
+    messagingSenderId: "601192030186",
+    appId: "1:601192030186:web:704cceb573449670691c93"
+  };
+
+  let db = null;
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+  } catch (e) {
+    console.warn("Firebase not configured yet — paste your firebaseConfig above.", e);
+  }
+
+  function renderLoading() {
+    document.getElementById("app").innerHTML = `
+      <div class="card">
+        <div class="directory">
+          <p class="eyebrow" style="justify-content:center;display:flex;">Vet Link</p>
+          <h1 style="font-size:26px;">Loading tag...</h1>
+        </div>
+      </div>`;
+  }
+
+  function renderMissing(reason) {
+    document.getElementById("app").innerHTML = `
+      <div class="card">
+        <div class="directory">
+          <p class="eyebrow" style="justify-content:center;display:flex;">Vet Link</p>
+          <h1 style="font-size:26px;">No record found</h1>
+          <p style="color:var(--steel-mid);font-size:14px;margin-top:10px;">${reason}</p>
+          <a href="index.html">→ Back to Vet Link</a>
+        </div>
+      </div>`;
+  }
+
+  async function render() {
+    const params = new URLSearchParams(window.location.search);
+    const petId = params.get("pet");
+    const app = document.getElementById("app");
+
+    if (!petId) {
+      renderMissing("This link is missing a tag ID. Scan a Vet Link tag's QR code to open a specific pet's profile.");
+      return;
+    }
+    if (!db) {
+      renderMissing("The database isn't connected yet — paste your firebaseConfig into the script.");
+      return;
+    }
+
+    renderLoading();
+
+    let pet;
+    try {
+      const doc = await db.collection("pets").doc(petId).get();
+      if (!doc.exists) {
+        renderMissing("This tag ID doesn't match any record in the database.");
+        return;
+      }
+      pet = doc.data();
+    } catch (err) {
+      console.error(err);
+      renderMissing("Something went wrong loading this record. Check the console for details.");
+      return;
+    }
+
+    app.innerHTML = `
+      <div class="card">
+        <div class="card-head">
+          <p class="eyebrow">Vet Link · Pet Profile</p>
+          <div class="avatar">${pet.name[0]}</div>
+          <h1>${pet.name}</h1>
+          <p style="color:var(--steel-mid);font-size:13px;margin:6px 0 0;">${pet.species}</p>
+          ${pet.ownershipVerified ? '<div class="status-badge">Ownership verified</div>' : ''}
+        </div>
+
+        <div class="section">
+          <p class="found-note">Found this pet? Contact the owner directly below.</p>
+          <a class="contact-btn" href="tel:${pet.owner.phone.replace(/\s/g,'')}">Call ${pet.owner.name}</a>
+        </div>
+
+        <div class="section">
+          <h2>Vaccinations</h2>
+          ${(pet.vaccinations && pet.vaccinations.length) ? pet.vaccinations.map(v => `
+            <div class="row"><span>${v.name} · ${v.date}</span><span>${v.status}</span></div>
+          `).join('') : '<div class="row"><span>None on file</span><span>—</span></div>'}
+        </div>
+
+        <div class="section">
+          <h2>Medications</h2>
+          ${(pet.medications && pet.medications.length) ? pet.medications.map(m => `
+            <div class="row"><span>${m.name}</span><span>${m.note}</span></div>
+          `).join('') : '<div class="row"><span>None active</span><span>—</span></div>'}
+        </div>
+
+        <div class="section">
+          <h2>Medical history</h2>
+          <p style="font-size:14px;color:var(--steel-light);margin:0;">${pet.medicalHistory || 'No history on file.'}</p>
+        </div>
+      </div>
+      <p class="footer-note">VET LINK — GROUP 6</p>
+    `;
+  }
+
+  render();
+</script>
+</body>
+</html>
