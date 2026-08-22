@@ -1032,7 +1032,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <!-- QR code generator (client-side, draws to <canvas>) -->
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
 
 <script>
   // -----------------------------------------------------------------------
@@ -1180,6 +1180,9 @@
 
       document.getElementById("petLink").textContent = profileUrl;
 
+      if (typeof QRCode === "undefined") {
+        throw new Error("QR library failed to load (check the qrcode script tag/CDN link).");
+      }
       const wrap = document.getElementById("qrCanvasWrap");
       wrap.innerHTML = `<canvas id="qrCanvas"></canvas>`;
       await QRCode.toCanvas(document.getElementById("qrCanvas"), profileUrl, { width: 220, margin: 1 });
@@ -1212,3 +1215,4 @@
 
 </body>
 </html>
+
