@@ -96,15 +96,14 @@
 <body>
 <div id="app"></div>
 
-<!-- Firebase (Firestore) -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script type="module">
+  // ---------------------------------------------------------------
+  // FIREBASE CONFIG — must match the SAME project/config used in
+  // index.html's registration form, or this page won't find any records.
+  // ---------------------------------------------------------------
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-<script>
-  // -----------------------------------------------------------------------
-  // PASTE THE SAME FIREBASE CONFIG YOU USED IN index.html — this must match
-  // exactly, since both files read/write the same "pets" collection.
-  // -----------------------------------------------------------------------
   const firebaseConfig = {
     apiKey: "AIzaSyCYqnAwl_MaSA7qv3FkCUa9-VUN_OhJwjc",
     authDomain: "vetlink-b046b.firebaseapp.com",
@@ -114,32 +113,16 @@
     appId: "1:601192030186:web:704cceb573449670691c93"
   };
 
-  let db = null;
-  try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
-  } catch (e) {
-    console.warn("Firebase not configured yet — paste your firebaseConfig above.", e);
-  }
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-  function renderLoading() {
-    document.getElementById("app").innerHTML = `
+  function showDirectory(app, message) {
+    app.innerHTML = `
       <div class="card">
         <div class="directory">
           <p class="eyebrow" style="justify-content:center;display:flex;">Vet Link</p>
-          <h1 style="font-size:26px;">Loading tag...</h1>
-        </div>
-      </div>`;
-  }
-
-  function renderMissing(reason) {
-    document.getElementById("app").innerHTML = `
-      <div class="card">
-        <div class="directory">
-          <p class="eyebrow" style="justify-content:center;display:flex;">Vet Link</p>
-          <h1 style="font-size:26px;">No record found</h1>
-          <p style="color:var(--steel-mid);font-size:14px;margin-top:10px;">${reason}</p>
-          <a href="index.html">→ Back to Vet Link</a>
+          <h1 style="font-size:26px;">No pet found</h1>
+          <p style="color:var(--steel-mid);font-size:14px;margin-top:10px;">${message}</p>
         </div>
       </div>`;
   }
@@ -150,65 +133,66 @@
     const app = document.getElementById("app");
 
     if (!petId) {
-      renderMissing("This link is missing a tag ID. Scan a Vet Link tag's QR code to open a specific pet's profile.");
-      return;
-    }
-    if (!db) {
-      renderMissing("The database isn't connected yet — paste your firebaseConfig into the script.");
+      showDirectory(app, "This page opens with a pet ID in the link, e.g. ?pet=milo-a1b2 — scan a real tag or register a pet from the main site.");
       return;
     }
 
-    renderLoading();
+    app.innerHTML = `<div class="card"><div class="directory"><p style="color:var(--steel-mid);font-family:var(--font-mono);font-size:13px;">Loading record…</p></div></div>`;
 
     let pet;
     try {
-      const doc = await db.collection("pets").doc(petId).get();
-      if (!doc.exists) {
-        renderMissing("This tag ID doesn't match any record in the database.");
+      const snap = await getDoc(doc(db, "pets", petId));
+      if (!snap.exists()) {
+        showDirectory(app, `No record found for "${petId}". Double-check the tag's link, or this pet may not be registered yet.`);
         return;
       }
-      pet = doc.data();
+      pet = snap.data();
     } catch (err) {
       console.error(err);
-      renderMissing("Something went wrong loading this record. Check the console for details.");
+      showDirectory(app, "Couldn't reach the record database. Check the Firebase config in this page's code.");
       return;
     }
+
+    const vaccinations = Array.isArray(pet.vaccinations) && pet.vaccinations.length
+      ? pet.vaccinations.map(v => `${v.name}${v.date ? " · " + v.date : ""}${v.status ? " — " + v.status : ""}`).join("<br>")
+      : "Not provided";
+    const medications = Array.isArray(pet.medications) && pet.medications.length
+      ? pet.medications.map(m => `${m.name}${m.note ? " — " + m.note : ""}`).join("<br>")
+      : "Not provided";
+    const ownerName = (pet.owner && pet.owner.name) || "owner";
+    const ownerPhone = (pet.owner && pet.owner.phone) || "";
 
     app.innerHTML = `
       <div class="card">
         <div class="card-head">
           <p class="eyebrow">Vet Link · Pet Profile</p>
-          <div class="avatar">${pet.name[0]}</div>
+          <div class="avatar">${(pet.name || "?")[0].toUpperCase()}</div>
           <h1>${pet.name}</h1>
-          <p style="color:var(--steel-mid);font-size:13px;margin:6px 0 0;">${pet.species}</p>
+          <p style="color:var(--steel-mid);font-size:13px;margin:6px 0 0;">${pet.species || ""}</p>
           ${pet.ownershipVerified ? '<div class="status-badge">Ownership verified</div>' : ''}
         </div>
 
         <div class="section">
           <p class="found-note">Found this pet? Contact the owner directly below.</p>
-          <a class="contact-btn" href="tel:${pet.owner.phone.replace(/\s/g,'')}">Call ${pet.owner.name}</a>
+          <a class="contact-btn" href="tel:${ownerPhone.replace(/\s/g,'')}">Call ${ownerName}</a>
         </div>
 
         <div class="section">
           <h2>Vaccinations</h2>
-          ${(pet.vaccinations && pet.vaccinations.length) ? pet.vaccinations.map(v => `
-            <div class="row"><span>${v.name} · ${v.date}</span><span>${v.status}</span></div>
-          `).join('') : '<div class="row"><span>None on file</span><span>—</span></div>'}
+          <p style="font-size:14px;color:var(--steel-light);margin:0;">${vaccinations}</p>
         </div>
 
         <div class="section">
           <h2>Medications</h2>
-          ${(pet.medications && pet.medications.length) ? pet.medications.map(m => `
-            <div class="row"><span>${m.name}</span><span>${m.note}</span></div>
-          `).join('') : '<div class="row"><span>None active</span><span>—</span></div>'}
+          <p style="font-size:14px;color:var(--steel-light);margin:0;">${medications}</p>
         </div>
 
         <div class="section">
           <h2>Medical history</h2>
-          <p style="font-size:14px;color:var(--steel-light);margin:0;">${pet.medicalHistory || 'No history on file.'}</p>
+          <p style="font-size:14px;color:var(--steel-light);margin:0;">${pet.medicalHistory || "Not provided"}</p>
         </div>
       </div>
-      <p class="footer-note">VET LINK — GROUP 6</p>
+      <p class="footer-note">VET LINK — GROUP 6 — LIVE RECORD</p>
     `;
   }
 
