@@ -127,6 +127,52 @@
     transition:color .2s ease;
   }
   nav.links a:hover{color:var(--vial-mint);}
+  nav.links a.nav-cta{
+    color:var(--navy-deep);
+    background:var(--tag-orange);
+    font-weight:600;
+    padding:9px 18px;
+    border-radius:100px;
+  }
+  nav.links a.nav-cta:hover{color:var(--navy-deep);background:#ff6c3d;}
+  .nav-email{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--steel-dim);
+    text-transform:none;
+  }
+  .linkish{
+    background:none;border:none;cursor:pointer;
+    color:var(--steel-mid);
+    font-family:var(--font-mono);font-size:13px;
+    letter-spacing:.05em;text-transform:uppercase;padding:0;
+  }
+  .linkish:hover{color:var(--tag-orange);}
+  .account-grid{
+    display:grid;
+    grid-template-columns:1.05fr .95fr;
+    gap:56px;
+    align-items:center;
+  }
+  @media (max-width:900px){.account-grid{grid-template-columns:1fr;}}
+  .locked-card{
+    background:var(--navy-deep);
+    border:1px solid rgba(203,210,217,.14);
+    border-radius:var(--radius-md);
+    padding:30px 28px;
+  }
+  .locked-card h3{
+    font-family:var(--font-body);font-weight:600;text-transform:none;
+    font-size:17px;letter-spacing:0;margin-bottom:6px;
+  }
+  .locked-list{list-style:none;margin:0;padding:0;}
+  .locked-list li{
+    display:grid;grid-template-columns:22px 1fr;gap:14px;
+    padding:16px 0;border-top:1px solid rgba(203,210,217,.12);
+  }
+  .locked-list li:first-child{border-top:none;}
+  .locked-list p{margin:4px 0 0;color:var(--steel-mid);font-size:14px;}
+  .locked-list .key{color:var(--vial-mint);font-family:var(--font-mono);font-size:14px;}
   @media (max-width:720px){
     nav.links{display:none;}
   }
@@ -706,10 +752,13 @@
   <div class="nav-inner">
     <a href="#top" class="wordmark"><span class="dot"></span>VET LINK</a>
     <nav class="links">
-      <a href="#problem">Problem</a>
       <a href="#how">How it works</a>
       <a href="#features">Features</a>
-      <a href="#register">Register a pet</a>
+      <span data-nav-auth><a href="login.html">Log in</a></span>
+      <span data-nav-auth><a href="signup.html" class="nav-cta">Sign up</a></span>
+      <span class="nav-email" data-nav-email></span>
+      <span data-nav-user><a href="dashboard.html" class="nav-cta">Dashboard</a></span>
+      <span data-nav-user><button type="button" class="linkish" data-logout>Log out</button></span>
     </nav>
   </div>
 </header>
@@ -822,12 +871,12 @@
                   <div class="avatar">M</div>
                   <div>
                     <div class="profile-name">Milo</div>
-                    <div class="profile-sub">OWNERSHIP VERIFIED</div>
+                    <div class="profile-sub">EMERGENCY CARD</div>
                   </div>
                 </div>
-                <div class="profile-row"><span>Vaccinations</span><span>Up to date</span></div>
+                <div class="profile-row"><span>Allergies</span><span>Sulfa drugs</span></div>
                 <div class="profile-row"><span>Medication</span><span>None active</span></div>
-                <div class="profile-row"><span>Owner contact</span><span>Available</span></div>
+                <div class="profile-row"><span>Owner</span><span>Call now</span></div>
               </div>
               <div class="phone-caption">vetlink.app/tag/scan</div>
             </div>
@@ -907,74 +956,41 @@
     </div>
   </section>
 
-  <!-- REGISTER -->
-  <section class="register" id="register">
-    <div class="wrap register-grid">
+  <!-- ACCOUNT -->
+  <section class="register" id="account">
+    <div class="wrap account-grid">
       <div>
         <p class="eyebrow">Get a tag</p>
-        <h2 style="margin-top:14px;font-size:clamp(28px,3.4vw,40px);">Register your pet,<br>get your QR code.</h2>
-        <p style="margin-top:16px;color:var(--steel-light);max-width:52ch;">Fill this in once. We'll save the record and generate a QR code you can print, engrave, or attach to a tag — scanning it opens your pet's profile page.</p>
-
-        <form id="registerForm" style="margin-top:32px;">
-          <div class="field-row">
-            <div class="field-group">
-              <label for="petName">Pet name</label>
-              <input type="text" id="petName" required placeholder="Milo">
-            </div>
-            <div class="field-group">
-              <label for="petSpecies">Species / breed</label>
-              <input type="text" id="petSpecies" placeholder="Dog · Golden Retriever">
-            </div>
-          </div>
-
-          <div class="field-group checkbox-row">
-            <input type="checkbox" id="ownershipVerified">
-            <label for="ownershipVerified" style="margin:0;">Mark ownership as verified</label>
-          </div>
-
-          <div class="field-group">
-            <label>Vaccinations</label>
-            <div id="vaccinationRows"></div>
-            <button type="button" class="add-row-btn" id="addVaccination">+ Add vaccination</button>
-          </div>
-
-          <div class="field-group">
-            <label>Medications</label>
-            <div id="medicationRows"></div>
-            <button type="button" class="add-row-btn" id="addMedication">+ Add medication</button>
-          </div>
-
-          <div class="field-group">
-            <label for="medicalHistory">Medical history</label>
-            <textarea id="medicalHistory" placeholder="Conditions, allergies, past treatment..."></textarea>
-          </div>
-
-          <div class="field-row">
-            <div class="field-group">
-              <label for="ownerName">Owner name</label>
-              <input type="text" id="ownerName" required placeholder="J. Rao">
-            </div>
-            <div class="field-group">
-              <label for="ownerPhone">Owner phone</label>
-              <input type="tel" id="ownerPhone" required placeholder="+91 90000 00000">
-            </div>
-          </div>
-
-          <button type="submit" class="submit-btn" id="submitBtn">Generate QR code</button>
-          <p class="form-msg" id="formMsg"></p>
-        </form>
+        <h2 style="margin-top:14px;font-size:clamp(28px,3.4vw,40px);">Pet records live<br>behind your account.</h2>
+        <p style="margin-top:16px;color:var(--steel-light);max-width:52ch;">Create an account, confirm your email, and your dashboard opens. Register a pet there and Vet Link generates a QR code you can print, engrave, or clip to a collar.</p>
+        <p style="margin-top:14px;color:var(--steel-mid);max-width:52ch;font-size:15px;">Scanning that code shows a stranger only what helps the pet: its name, allergies, medications, conditions, and a button that calls you. Your email and address stay in your account.</p>
+        <div class="cta-row">
+          <span data-nav-auth><a href="signup.html" class="btn btn-primary">Create an account</a></span>
+          <span data-nav-auth><a href="login.html" class="btn btn-ghost">Log in</a></span>
+          <span data-nav-user><a href="dashboard.html" class="btn btn-primary">Open your dashboard</a></span>
+        </div>
       </div>
 
-      <div class="qr-result" id="qrResult">
-        <p class="eyebrow">Your pet's tag</p>
-        <div class="qr-canvas-wrap" id="qrCanvasWrap">
-          <div class="qr-placeholder">Fill in the form and generate a code — it'll appear here.</div>
-        </div>
-        <span class="pet-link" id="petLink"></span>
-        <div class="qr-actions">
-          <a class="btn btn-ghost" id="downloadQr" style="display:none;" download="pet-tag-qr.png">Download QR</a>
-          <a class="btn btn-ghost" id="viewProfile" style="display:none;" target="_blank" rel="noopener">View profile ↗</a>
-        </div>
+      <div class="locked-card">
+        <p class="eyebrow" style="margin-bottom:20px;">In your dashboard</p>
+        <ul class="locked-list">
+          <li>
+            <span class="key">01</span>
+            <div><h3>Register and edit pets</h3><p>Name, species, allergies, medications, conditions and the number that rings when someone scans.</p></div>
+          </li>
+          <li>
+            <span class="key">02</span>
+            <div><h3>Mark a pet lost</h3><p>One tap puts a lost banner on the scan page. Tap again when they're home.</p></div>
+          </li>
+          <li>
+            <span class="key">03</span>
+            <div><h3>Control the tag</h3><p>Activate, pause or revoke a QR code — a revoked tag stops resolving immediately.</p></div>
+          </li>
+          <li>
+            <span class="key">04</span>
+            <div><h3>See every scan</h3><p>Time, device and, when the finder shares it, the coordinates the scan came from.</p></div>
+          </li>
+        </ul>
       </div>
     </div>
   </section>
@@ -1025,192 +1041,13 @@
   }
 </script>
 
-<!-- ===================== Vet Link: registration + QR generation ===================== -->
-
-<!-- Firebase (Firestore) -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
-<!-- QR code generator (client-side, draws to <canvas>) -->
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
-
-<script>
-  // -----------------------------------------------------------------------
-  // 1) PASTE YOUR FIREBASE CONFIG HERE — replace this whole object with the
-  //    one Firebase gives you when you register a web app (see setup guide).
-  // -----------------------------------------------------------------------
-  const firebaseConfig = {
-    apiKey: "AIzaSyCYqnAwl_MaSA7qv3FkCUa9-VUN_OhJwjc",
-    authDomain: "vetlink-b046b.firebaseapp.com",
-    projectId: "vetlink-b046b",
-    storageBucket: "vetlink-b046b.firebasestorage.app",
-    messagingSenderId: "601192030186",
-    appId: "1:601192030186:web:704cceb573449670691c93"
-  };
-
-  let db = null;
-  try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
-  } catch (e) {
-    console.warn("Firebase not configured yet — paste your firebaseConfig above.", e);
-  }
-
-  // ---- helpers ----
-  function slugify(str) {
-    return str.toLowerCase().trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "") || "pet";
-  }
-  function randomSuffix() {
-    return Math.random().toString(16).slice(2, 6);
-  }
-
-  // ---- dynamic vaccination / medication rows ----
-  function addVaccinationRow(vals = {}) {
-    const wrap = document.getElementById("vaccinationRows");
-    const row = document.createElement("div");
-    row.className = "repeat-block vaccination-row";
-    row.innerHTML = `
-      <button type="button" class="remove-row">Remove</button>
-      <div class="field-row">
-        <div class="field-group" style="margin-bottom:10px;">
-          <label>Vaccine name</label>
-          <input type="text" class="vacc-name" placeholder="Rabies" value="${vals.name || ''}">
-        </div>
-        <div class="field-group" style="margin-bottom:10px;">
-          <label>Date given</label>
-          <input type="text" class="vacc-date" placeholder="Mar 2026" value="${vals.date || ''}">
-        </div>
-      </div>
-      <div class="field-group" style="margin-bottom:0;">
-        <label>Status</label>
-        <input type="text" class="vacc-status" placeholder="Up to date" value="${vals.status || ''}">
-      </div>`;
-    row.querySelector(".remove-row").addEventListener("click", () => row.remove());
-    wrap.appendChild(row);
-  }
-  function addMedicationRow(vals = {}) {
-    const wrap = document.getElementById("medicationRows");
-    const row = document.createElement("div");
-    row.className = "repeat-block medication-row";
-    row.innerHTML = `
-      <button type="button" class="remove-row">Remove</button>
-      <div class="field-row">
-        <div class="field-group" style="margin-bottom:0;">
-          <label>Medication name</label>
-          <input type="text" class="med-name" placeholder="None active" value="${vals.name || ''}">
-        </div>
-        <div class="field-group" style="margin-bottom:0;">
-          <label>Note / dosage</label>
-          <input type="text" class="med-note" placeholder="1x daily, morning" value="${vals.note || ''}">
-        </div>
-      </div>`;
-    row.querySelector(".remove-row").addEventListener("click", () => row.remove());
-    wrap.appendChild(row);
-  }
-
-  document.getElementById("addVaccination").addEventListener("click", () => addVaccinationRow());
-  document.getElementById("addMedication").addEventListener("click", () => addMedicationRow());
-  // seed one of each so the form isn't empty on load
-  addVaccinationRow();
-  addMedicationRow();
-
-  // ---- submit handler ----
-  const form = document.getElementById("registerForm");
-  const formMsg = document.getElementById("formMsg");
-  const submitBtn = document.getElementById("submitBtn");
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    formMsg.className = "form-msg";
-    formMsg.textContent = "";
-
-    const name = document.getElementById("petName").value.trim();
-    const species = document.getElementById("petSpecies").value.trim();
-    const ownerName = document.getElementById("ownerName").value.trim();
-    const ownerPhone = document.getElementById("ownerPhone").value.trim();
-    const medicalHistory = document.getElementById("medicalHistory").value.trim();
-    const ownershipVerified = document.getElementById("ownershipVerified").checked;
-
-    if (!name || !ownerName || !ownerPhone) {
-      formMsg.classList.add("error");
-      formMsg.textContent = "Pet name, owner name, and owner phone are required.";
-      return;
-    }
-    if (!db) {
-      formMsg.classList.add("error");
-      formMsg.textContent = "Database isn't connected yet — paste your firebaseConfig into the script.";
-      return;
-    }
-
-    const vaccinations = Array.from(document.querySelectorAll(".vaccination-row")).map(row => ({
-      name: row.querySelector(".vacc-name").value.trim(),
-      date: row.querySelector(".vacc-date").value.trim(),
-      status: row.querySelector(".vacc-status").value.trim()
-    })).filter(v => v.name);
-
-    const medications = Array.from(document.querySelectorAll(".medication-row")).map(row => ({
-      name: row.querySelector(".med-name").value.trim(),
-      note: row.querySelector(".med-note").value.trim()
-    })).filter(m => m.name);
-
-    const petId = `${slugify(name)}-${randomSuffix()}`;
-
-    const petData = {
-      name,
-      species,
-      ownershipVerified,
-      vaccinations,
-      medications,
-      medicalHistory,
-      owner: { name: ownerName, phone: ownerPhone },
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Saving...";
-
-    try {
-      await db.collection("pets").doc(petId).set(petData);
-
-      // build the profile URL relative to wherever this page is hosted,
-      // so it works the same on GitHub Pages, localhost, etc.
-      const profileUrl = new URL(`pet-profile.html?pet=${petId}`, window.location.href).toString();
-
-      document.getElementById("petLink").textContent = profileUrl;
-
-      if (typeof QRCode === "undefined") {
-        throw new Error("QR library failed to load (check the qrcode script tag/CDN link).");
-      }
-      const wrap = document.getElementById("qrCanvasWrap");
-      wrap.innerHTML = `<canvas id="qrCanvas"></canvas>`;
-      await QRCode.toCanvas(document.getElementById("qrCanvas"), profileUrl, { width: 220, margin: 1 });
-
-      const downloadBtn = document.getElementById("downloadQr");
-      downloadBtn.style.display = "inline-flex";
-      downloadBtn.href = document.getElementById("qrCanvas").toDataURL("image/png");
-      downloadBtn.download = `${petId}-qr.png`;
-
-      const viewBtn = document.getElementById("viewProfile");
-      viewBtn.style.display = "inline-flex";
-      viewBtn.href = profileUrl;
-
-      formMsg.classList.add("ok");
-      formMsg.textContent = `Saved! Tag ID: ${petId}`;
-      form.reset();
-      document.querySelectorAll(".vaccination-row, .medication-row").forEach(r => r.remove());
-      addVaccinationRow();
-      addMedicationRow();
-    } catch (err) {
-      console.error(err);
-      formMsg.classList.add("error");
-      formMsg.textContent = "Something went wrong saving this record. Check the console for details.";
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Generate QR code";
-    }
-  });
+<!-- ===================== Vet Link: session-aware navigation =====================
+     No pet data is read or written on this page. Registration moved to the
+     dashboard, which requires a verified account.
+================================================================================ -->
+<script type="module">
+  import { wireNav } from "./auth.js";
+  wireNav();
 </script>
 
 </body>
