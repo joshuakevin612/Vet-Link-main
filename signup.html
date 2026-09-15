@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vet Link — Sign up</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Text:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="vetlink-ui.css">
+<style>
+  .auth-stage{
+    min-height:calc(100vh - 71px);
+    display:flex;align-items:center;justify-content:center;
+    padding:48px 20px;
+  }
+  .auth-card{width:100%;max-width:480px;}
+  .auth-card h1{font-size:44px;line-height:.95;margin:14px 0 10px;}
+  .auth-card .sub{color:var(--steel-light);font-size:15px;margin:0 0 28px;}
+  .auth-alt{
+    margin-top:22px;padding-top:18px;
+    border-top:1px dashed rgba(203,210,217,.18);
+    font-size:13.5px;color:var(--steel-mid);
+  }
+  .auth-alt a{color:var(--vial-mint);}
+  .sent{text-align:center;padding:10px 0 4px;}
+  .sent .mark{
+    width:64px;height:64px;border-radius:50%;
+    background:rgba(143,227,192,.12);color:var(--vial-mint);
+    display:flex;align-items:center;justify-content:center;
+    font-size:28px;margin:0 auto 18px;
+  }
+  .sent p{color:var(--steel-light);font-size:15px;}
+  .sent .addr{font-family:var(--font-mono);color:var(--vial-mint);word-break:break-all;}
+</style>
+</head>
+<body>
+
+<header class="site-nav">
+  <div class="nav-inner">
+    <a href="index.html" class="wordmark"><span class="dot"></span>VET LINK</a>
+    <nav class="links">
+      <a href="index.html">Home</a>
+      <span data-nav-auth><a href="login.html">Log in</a></span>
+      <span data-nav-user><a href="dashboard.html" class="nav-cta">Dashboard</a></span>
+    </nav>
+  </div>
+</header>
+
+<main class="auth-stage">
+  <div class="auth-card panel" id="card">
+    <p class="eyebrow">Create an account</p>
+    <h1>Sign up</h1>
+    <p class="sub">One account holds every pet you register, their tags, and their scan history.</p>
+
+    <form id="signupForm" novalidate>
+      <div class="field-row">
+        <div class="field-group">
+          <label for="name">Your name</label>
+          <input type="text" id="name" autocomplete="name" required placeholder="J. Rao">
+        </div>
+        <div class="field-group">
+          <label for="phone">Phone</label>
+          <input type="tel" id="phone" autocomplete="tel" placeholder="+91 90000 00000">
+        </div>
+      </div>
+      <div class="field-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" autocomplete="email" required placeholder="you@example.com">
+        <p class="hint">We send a verification link here. Your email is never shown on a scanned tag.</p>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" autocomplete="new-password" required placeholder="At least 6 characters">
+        </div>
+        <div class="field-group">
+          <label for="confirm">Confirm password</label>
+          <input type="password" id="confirm" autocomplete="new-password" required placeholder="Repeat it">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary" id="submitBtn" style="width:100%;">Create account</button>
+      <p class="form-msg" id="msg"></p>
+    </form>
+
+    <div class="auth-alt">Already registered? <a href="login.html">Log in</a></div>
+  </div>
+</main>
+
+<script type="module">
+  import { signUp, authErrorMessage, wireNav } from "./auth.js";
+
+  wireNav();
+
+  const form = document.getElementById("signupForm");
+  const msg = document.getElementById("msg");
+  const btn = document.getElementById("submitBtn");
+
+  const say = (text, kind = "") => {
+    msg.className = "form-msg" + (kind ? " " + kind : "");
+    msg.textContent = text;
+  };
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = document.getElementById("name").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const confirm = document.getElementById("confirm").value;
+
+    if (!name || !email || !password) { say("Name, email and password are required.", "error"); return; }
+    if (password.length < 6) { say("Use at least 6 characters for the password.", "error"); return; }
+    if (password !== confirm) { say("The two passwords don't match.", "error"); return; }
+
+    btn.disabled = true;
+    say("Creating your account…");
+
+    try {
+      await signUp({ name, email, phone, password });
+      document.getElementById("card").innerHTML = `
+        <div class="sent">
+          <div class="mark">✉</div>
+          <h1 style="font-size:34px;">Check your inbox</h1>
+          <p>We sent a verification link to<br><span class="addr">${email}</span></p>
+          <p style="color:var(--steel-mid);font-size:14px;">Open it, then log in. Pets can't be registered until the address is confirmed.</p>
+          <a class="btn btn-primary" href="login.html" style="margin-top:8px;">Go to log in</a>
+        </div>`;
+    } catch (err) {
+      say(authErrorMessage(err), "error");
+      btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vet Link — Owner dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Text:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="vetlink-ui.css">
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
+<style>
+  main{padding:44px 0 20px;}
+  .dash-head{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    gap:20px;flex-wrap:wrap;margin-bottom:34px;
+  }
+  .dash-head h1{font-size:clamp(34px,5vw,52px);line-height:.96;margin-top:14px;}
+  .dash-head p{color:var(--steel-light);margin:10px 0 0;max-width:48ch;}
+
+  .pet-grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px;
+  }
+  .pet-card{
+    background:var(--navy-panel);
+    border:1px solid rgba(203,210,217,.14);
+    border-radius:var(--radius-md);
+    padding:22px;
+    display:flex;flex-direction:column;gap:14px;
+  }
+  .pet-card.is-lost{border-color:rgba(255,92,41,.55);}
+  .pet-card-top{display:flex;align-items:center;gap:14px;}
+  .pet-avatar{
+    width:52px;height:52px;border-radius:50%;
+    background:var(--tag-orange);color:var(--navy-deep);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-display);font-size:24px;flex:none;
+  }
+  .pet-card h3{font-size:26px;line-height:1;}
+  .pet-card .species{font-size:13px;color:var(--steel-mid);margin:4px 0 0;}
+  .pet-meta{
+    display:flex;flex-wrap:wrap;gap:8px;
+  }
+  .pet-facts{
+    font-size:13px;color:var(--steel-mid);
+    border-top:1px dashed rgba(203,210,217,.16);padding-top:12px;
+    display:flex;flex-direction:column;gap:4px;
+  }
+  .pet-facts b{color:var(--steel-light);font-weight:500;}
+  .pet-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:4px;}
+
+  .empty{
+    border:1px dashed rgba(203,210,217,.26);
+    border-radius:var(--radius-md);
+    padding:56px 28px;text-align:center;
+  }
+  .empty h2{font-size:30px;margin-bottom:10px;}
+  .empty p{color:var(--steel-mid);max-width:44ch;margin:0 auto 22px;}
+
+  .notice{
+    border:1px solid rgba(255,138,101,.4);
+    background:rgba(255,138,101,.07);
+    border-radius:14px;padding:16px 18px;margin-bottom:26px;
+    font-size:14px;color:var(--steel-light);
+  }
+
+  /* QR panel */
+  .qr-wrap{
+    background:#fff;display:inline-flex;padding:16px;border-radius:14px;margin-bottom:16px;
+  }
+  .qr-link{
+    display:block;font-family:var(--font-mono);font-size:12px;color:var(--vial-mint);
+    word-break:break-all;margin-bottom:18px;
+  }
+  .qr-state{
+    display:grid;grid-template-columns:1fr;gap:10px;margin-top:18px;
+    border-top:1px dashed rgba(203,210,217,.18);padding-top:18px;
+  }
+
+  /* scans */
+  .scan-list{display:flex;flex-direction:column;gap:12px;max-height:60vh;overflow-y:auto;}
+  .scan-row{
+    border:1px solid rgba(203,210,217,.14);border-radius:12px;padding:14px 16px;
+    font-size:13px;color:var(--steel-mid);
+  }
+  .scan-row .when{
+    font-family:var(--font-mono);font-size:12px;color:var(--vial-mint);
+    letter-spacing:.04em;margin-bottom:6px;
+  }
+  .scan-row .line{display:flex;gap:10px;justify-content:space-between;padding:3px 0;}
+  .scan-row .line span:last-child{color:var(--steel-light);text-align:right;word-break:break-word;}
+  .scan-row a{color:var(--tag-orange);}
+</style>
+</head>
+<body>
+
+<header class="site-nav">
+  <div class="nav-inner">
+    <a href="index.html" class="wordmark"><span class="dot"></span>VET LINK</a>
+    <nav class="links">
+      <a href="index.html">Home</a>
+      <span class="nav-email" data-nav-email></span>
+      <span data-nav-user><button type="button" class="linkish" data-logout>Log out</button></span>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="dash-head">
+    <div>
+      <p class="eyebrow">Owner dashboard</p>
+      <h1 id="greeting">Your pets</h1>
+      <p>Everything here is private to your account. Only the emergency card — name, allergies, medications, conditions and your phone number — appears when someone scans a tag.</p>
+    </div>
+    <button class="btn btn-primary" id="addPetBtn">Register a pet</button>
+  </div>
+
+  <div id="loading" style="font-family:var(--font-mono);font-size:13px;color:var(--steel-dim);">Loading your pets…</div>
+  <div class="pet-grid" id="petGrid"></div>
+
+</main>
+
+<footer>
+  <div class="wrap footer-inner">
+    <span>VET LINK — a smart pet tag system</span>
+    <span>Group 6 · Owner dashboard</span>
+  </div>
+</footer>
+
+<!-- ============ PET FORM MODAL ============ -->
+<div class="modal-backdrop" id="petModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="petModalTitle">
+    <div class="modal-head">
+      <h2 id="petModalTitle">Register a pet</h2>
+      <button class="modal-close" data-close>Close ✕</button>
+    </div>
+
+    <form id="petForm" novalidate>
+      <div class="field-row">
+        <div class="field-group">
+          <label for="petName">Pet name</label>
+          <input type="text" id="petName" required placeholder="Milo">
+        </div>
+        <div class="field-group">
+          <label for="petSpecies">Species / breed</label>
+          <input type="text" id="petSpecies" placeholder="Dog · Golden Retriever">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label for="allergies">Allergies</label>
+        <input type="text" id="allergies" placeholder="Chicken protein, sulfa drugs">
+        <p class="hint">Shown on the scan page — a vet may need this before treating.</p>
+      </div>
+
+      <div class="field-group">
+        <label>Medications</label>
+        <div id="medicationRows"></div>
+        <button type="button" class="add-row-btn" id="addMedication">+ Add medication</button>
+      </div>
+
+      <div class="field-group">
+        <label for="medicalHistory">Medical conditions / history</label>
+        <textarea id="medicalHistory" placeholder="Epilepsy — on daily medication. Hip surgery, 2023."></textarea>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label for="contactName">Emergency contact name</label>
+          <input type="text" id="contactName" required placeholder="J. Rao">
+        </div>
+        <div class="field-group">
+          <label for="contactPhone">Emergency contact phone</label>
+          <input type="tel" id="contactPhone" required placeholder="+91 90000 00000">
+        </div>
+      </div>
+      <p class="hint" style="margin:-12px 0 20px;">This number becomes the call button on the scan page. Nothing else about you is published.</p>
+
+      <details style="margin-bottom:20px;">
+        <summary style="cursor:pointer;font-family:var(--font-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--steel-mid);">Private notes — never published</summary>
+        <div style="margin-top:16px;">
+          <div class="field-group">
+            <label for="ownerAddress">Home address</label>
+            <input type="text" id="ownerAddress" placeholder="For your own records only">
+          </div>
+          <div class="field-group">
+            <label for="vetNotes">Vet / clinic notes</label>
+            <textarea id="vetNotes" placeholder="Clinic name, microchip number, insurance policy…"></textarea>
+          </div>
+        </div>
+      </details>
+
+      <div class="field-group checkbox-row">
+        <input type="checkbox" id="isLost">
+        <label for="isLost" style="margin:0;">This pet is currently lost</label>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="petSaveBtn">Save pet</button>
+      <p class="form-msg" id="petMsg"></p>
+    </form>
+  </div>
+</div>
+
+<!-- ============ QR MODAL ============ -->
+<div class="modal-backdrop" id="qrModal" hidden>
+  <div class="modal" style="max-width:480px;text-align:center;" role="dialog" aria-modal="true">
+    <div class="modal-head" style="text-align:left;">
+      <h2 id="qrTitle">Tag</h2>
+      <button class="modal-close" data-close>Close ✕</button>
+    </div>
+    <div class="qr-wrap" id="qrWrap"></div>
+    <span class="qr-link" id="qrLink"></span>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      <a class="btn btn-ghost btn-sm" id="qrDownload" download="vet-link-tag.png">Download PNG</a>
+      <a class="btn btn-ghost btn-sm" id="qrOpen" target="_blank" rel="noopener">Open scan page</a>
+    </div>
+    <div class="qr-state" id="qrState"></div>
+    <p class="form-msg" id="qrMsg"></p>
+  </div>
+</div>
+
+<!-- ============ SCAN HISTORY MODAL ============ -->
+<div class="modal-backdrop" id="scanModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <h2 id="scanTitle">Scan history</h2>
+      <button class="modal-close" data-close>Close ✕</button>
+    </div>
+    <div class="scan-list" id="scanList"></div>
+  </div>
+</div>
+
+<script type="module">
+import {
+  collection, doc, setDoc, getDoc, getDocs, deleteDoc, updateDoc,
+  query, where, orderBy, limit, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+import { db, PETS, PUBLIC_TAGS, SCANS, publicProfileUrl } from "./firebase-config.js";
+import { requireVerifiedUser, getOwnerProfile, wireNav } from "./auth.js";
+
+wireNav();
+
+// ---------------------------------------------------------------------
+// Gate: no verified session, no dashboard.
+// ---------------------------------------------------------------------
+const user = await requireVerifiedUser();
+const profile = await getOwnerProfile(user.uid);
+
+document.getElementById("greeting").textContent =
+  profile?.name ? `${profile.name.split(" ")[0]}'s pets` : "Your pets";
+
+// ---------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
+  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function slugify(str) {
+  return String(str).toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 24) || "pet";
+}
+function newPetId(name) {
+  return `${slugify(name)}-${Math.random().toString(16).slice(2, 6)}`;
+}
+function fmtDate(ts) {
+  if (!ts) return "—";
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+function openModal(id) { $(id).hidden = false; document.body.style.overflow = "hidden"; }
+function closeModal(id) { $(id).hidden = true; document.body.style.overflow = ""; }
+document.querySelectorAll("[data-close]").forEach((b) =>
+  b.addEventListener("click", () => closeModal(b.closest(".modal-backdrop").id)));
+document.querySelectorAll(".modal-backdrop").forEach((bd) =>
+  bd.addEventListener("click", (e) => { if (e.target === bd) closeModal(bd.id); }));
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") document.querySelectorAll(".modal-backdrop:not([hidden])")
+    .forEach((bd) => closeModal(bd.id));
+});
+
+// ---------------------------------------------------------------------
+// Data layer
+//
+// Two documents per pet, on purpose:
+//   pets/{id}       full record, owner-only (rules)
+//   publicTags/{id} emergency projection, world-readable while active
+//
+// Firestore authorises whole documents, so the only reliable way to keep
+// an email or address off the scan page is to never put it in the
+// document the public can read.
+// ---------------------------------------------------------------------
+function publicProjection(pet) {
+  return {
+    petId: pet.petId,
+    name: pet.name,
+    species: pet.species || "",
+    isLost: !!pet.isLost,
+    allergies: pet.allergies || "",
+    medications: pet.medications || [],
+    medicalHistory: pet.medicalHistory || "",
+    contactName: pet.contactName || "",
+    contactPhone: pet.contactPhone || "",
+    qrStatus: pet.qrStatus || "active",
+    updatedAt: serverTimestamp()
+  };
+}
+
+async function savePet(petId, pet, { isNew }) {
+  // Private record first: the publicTags rule reads pets/{id}.ownerId to
+  // decide whether this write is allowed, so it has to exist already.
+  await setDoc(doc(db, PETS, petId), {
+    ...pet,
+    petId,
+    ownerId: user.uid,
+    ownerEmail: user.email,
+    updatedAt: serverTimestamp(),
+    ...(isNew ? { createdAt: serverTimestamp() } : {})
+  }, { merge: true });
+
+  if (pet.qrStatus === "revoked") {
+    await deleteDoc(doc(db, PUBLIC_TAGS, petId)).catch(() => {});
+  } else {
+    await setDoc(doc(db, PUBLIC_TAGS, petId), publicProjection({ ...pet, petId }));
+  }
+}
+
+async function loadPets() {
+  const q = query(
+    collection(db, PETS),
+    where("ownerId", "==", user.uid),
+    orderBy("createdAt", "desc")
+  );
+  const snap = await getDocs(q);
+  const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+  // A finder can only write to the scan log — never to the pet record —
+  // so "last scanned" is read back from that log.
+  await Promise.all(list.map(async (pet) => {
+    try {
+      const last = await getDocs(query(
+        collection(db, PETS, pet.id, SCANS), orderBy("scannedAt", "desc"), limit(1)
+      ));
+      pet.lastScanAt = last.empty ? null : last.docs[0].data().scannedAt;
+    } catch { pet.lastScanAt = null; }
+  }));
+
+  return list;
+}
+
+// ---------------------------------------------------------------------
+// Pet list
+// ---------------------------------------------------------------------
+let pets = [];
+
+function statusBadge(pet) {
+  if (pet.qrStatus === "revoked") return '<span class="badge badge-revoked">Tag revoked</span>';
+  if (pet.qrStatus === "inactive") return '<span class="badge badge-off">Tag paused</span>';
+  return '<span class="badge badge-ok">Tag active</span>';
+}
+
+function petCard(pet) {
+  const meds = Array.isArray(pet.medications) ? pet.medications.filter((m) => m.name) : [];
+  return `
+    <article class="pet-card ${pet.isLost ? "is-lost" : ""}">
+      <div class="pet-card-top">
+        <div class="pet-avatar">${esc((pet.name || "?")[0].toUpperCase())}</div>
+        <div>
+          <h3>${esc(pet.name)}</h3>
+          <p class="species">${esc(pet.species || "Species not set")}</p>
+        </div>
+      </div>
+
+      <div class="pet-meta">
+        ${pet.isLost ? '<span class="badge badge-lost">Lost</span>' : ""}
+        ${statusBadge(pet)}
+      </div>
+
+      <div class="pet-facts">
+        <span><b>Allergies:</b> ${esc(pet.allergies || "none recorded")}</span>
+        <span><b>Medications:</b> ${meds.length ? esc(meds.map((m) => m.name).join(", ")) : "none recorded"}</span>
+        <span><b>Last scan:</b> ${pet.lastScanAt ? fmtDate(pet.lastScanAt) : "never"}</span>
+      </div>
+
+      <div class="pet-actions">
+        <button class="btn btn-ghost btn-sm" data-edit="${esc(pet.id)}">Edit</button>
+        <button class="btn ${pet.isLost ? "btn-ghost" : "btn-primary"} btn-sm" data-lost="${esc(pet.id)}">
+          ${pet.isLost ? "Mark as found" : "Mark as lost"}
+        </button>
+        <button class="btn btn-ghost btn-sm" data-qr="${esc(pet.id)}">QR tag</button>
+        <button class="btn btn-ghost btn-sm" data-scans="${esc(pet.id)}">Scans</button>
+        <button class="btn btn-danger btn-sm" data-delete="${esc(pet.id)}">Delete</button>
+      </div>
+    </article>`;
+}
+
+async function render() {
+  $("loading").style.display = "";
+  try {
+    pets = await loadPets();
+  } catch (err) {
+    console.error(err);
+    $("loading").innerHTML =
+      `<div class="notice">Couldn't load your pets: ${esc(err.message)}. If this says permission denied, publish the rules in firestore.rules and make sure your email is verified.</div>`;
+    return;
+  }
+  $("loading").style.display = "none";
+
+  const grid = $("petGrid");
+  if (!pets.length) {
+    grid.innerHTML = `
+      <div class="empty" style="grid-column:1/-1;">
+        <h2>No pets yet</h2>
+        <p>Register your first pet to generate a QR tag. It takes about a minute.</p>
+        <button class="btn btn-primary" id="emptyAdd">Register a pet</button>
+      </div>`;
+    $("emptyAdd").addEventListener("click", () => openPetForm(null));
+    return;
+  }
+  grid.innerHTML = pets.map(petCard).join("");
+}
+
+$("petGrid").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-edit],button[data-lost],button[data-qr],button[data-scans],button[data-delete]");
+  if (!btn) return;
+  const { edit, lost, qr, scans, delete: del } = btn.dataset;
+  if (edit) openPetForm(pets.find((p) => p.id === edit));
+  else if (lost) toggleLost(lost, btn);
+  else if (qr) openQr(qr);
+  else if (scans) openScans(scans);
+  else if (del) deletePet(del);
+});
+
+// ---------------------------------------------------------------------
+// Register / edit
+// ---------------------------------------------------------------------
+let editingId = null;
+
+function medicationRow(med = {}) {
+  const wrap = document.createElement("div");
+  wrap.className = "repeat-block";
+  wrap.innerHTML = `
+    <button type="button" class="remove-row">Remove</button>
+    <div class="field-row">
+      <div class="field-group" style="margin-bottom:0;">
+        <label>Medication</label>
+        <input type="text" class="med-name" value="${esc(med.name || "")}" placeholder="Phenobarbital 30mg">
+      </div>
+      <div class="field-group" style="margin-bottom:0;">
+        <label>Dose / note</label>
+        <input type="text" class="med-note" value="${esc(med.note || "")}" placeholder="Twice daily with food">
+      </div>
+    </div>`;
+  wrap.querySelector(".remove-row").addEventListener("click", () => wrap.remove());
+  return wrap;
+}
+
+$("addMedication").addEventListener("click", () =>
+  $("medicationRows").appendChild(medicationRow()));
+
+$("addPetBtn").addEventListener("click", () => openPetForm(null));
+
+function openPetForm(pet) {
+  editingId = pet ? pet.id : null;
+  $("petModalTitle").textContent = pet ? `Edit ${pet.name}` : "Register a pet";
+  $("petSaveBtn").textContent = pet ? "Save changes" : "Register pet";
+  $("petMsg").textContent = "";
+  $("petMsg").className = "form-msg";
+
+  $("petName").value = pet?.name || "";
+  $("petSpecies").value = pet?.species || "";
+  $("allergies").value = pet?.allergies || "";
+  $("medicalHistory").value = pet?.medicalHistory || "";
+  $("contactName").value = pet?.contactName || profile?.name || "";
+  $("contactPhone").value = pet?.contactPhone || profile?.phone || "";
+  $("ownerAddress").value = pet?.ownerAddress || "";
+  $("vetNotes").value = pet?.vetNotes || "";
+  $("isLost").checked = !!pet?.isLost;
+
+  const rows = $("medicationRows");
+  rows.innerHTML = "";
+  const meds = pet?.medications?.length ? pet.medications : [{}];
+  meds.forEach((m) => rows.appendChild(medicationRow(m)));
+
+  openModal("petModal");
+  $("petName").focus();
+}
+
+$("petForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const msg = $("petMsg");
+  const btn = $("petSaveBtn");
+  const say = (t, kind = "") => { msg.className = "form-msg" + (kind ? " " + kind : ""); msg.textContent = t; };
+
+  const name = $("petName").value.trim();
+  const contactName = $("contactName").value.trim();
+  const contactPhone = $("contactPhone").value.trim();
+  if (!name || !contactName || !contactPhone) {
+    say("Pet name and an emergency contact are required.", "error");
+    return;
+  }
+
+  const medications = [...$("medicationRows").querySelectorAll(".repeat-block")]
+    .map((r) => ({
+      name: r.querySelector(".med-name").value.trim(),
+      note: r.querySelector(".med-note").value.trim()
+    }))
+    .filter((m) => m.name);
+
+  const existing = pets.find((p) => p.id === editingId);
+  const petId = editingId || newPetId(name);
+
+  const pet = {
+    name,
+    species: $("petSpecies").value.trim(),
+    allergies: $("allergies").value.trim(),
+    medications,
+    medicalHistory: $("medicalHistory").value.trim(),
+    contactName,
+    contactPhone,
+    ownerAddress: $("ownerAddress").value.trim(),  // private
+    vetNotes: $("vetNotes").value.trim(),          // private
+    isLost: $("isLost").checked,
+    qrStatus: existing?.qrStatus || "active"
+  };
+
+  btn.disabled = true;
+  say("Saving…");
+  try {
+    await savePet(petId, pet, { isNew: !editingId });
+    closeModal("petModal");
+    await render();
+    if (!editingId) openQr(petId);
+  } catch (err) {
+    console.error(err);
+    say("Couldn't save: " + err.message, "error");
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ---------------------------------------------------------------------
+// Lost / found
+// ---------------------------------------------------------------------
+async function toggleLost(petId, btn) {
+  const pet = pets.find((p) => p.id === petId);
+  const next = !pet.isLost;
+  btn.disabled = true;
+  try {
+    await updateDoc(doc(db, PETS, petId), { isLost: next, updatedAt: serverTimestamp() });
+    if (pet.qrStatus !== "revoked") {
+      await updateDoc(doc(db, PUBLIC_TAGS, petId), { isLost: next, updatedAt: serverTimestamp() });
+    }
+    await render();
+  } catch (err) {
+    console.error(err);
+    alert("Couldn't update lost status: " + err.message);
+    btn.disabled = false;
+  }
+}
+
+// ---------------------------------------------------------------------
+// QR tag: generate, activate, pause, revoke
+// ---------------------------------------------------------------------
+let qrPetId = null;
+
+async function openQr(petId) {
+  qrPetId = petId;
+  const pet = pets.find((p) => p.id === petId) ||
+    { ...(await getDoc(doc(db, PETS, petId))).data(), id: petId };
+
+  const url = publicProfileUrl(petId);
+  $("qrTitle").textContent = `${pet.name}'s tag`;
+  $("qrLink").textContent = url;
+  $("qrOpen").href = url;
+  $("qrMsg").textContent = "";
+
+  const wrap = $("qrWrap");
+  wrap.innerHTML = '<canvas id="qrCanvas"></canvas>';
+  QRCode.toCanvas($("qrCanvas"), url, { width: 220, margin: 1 }, (err) => {
+    if (err) { console.error(err); wrap.textContent = "QR render failed"; return; }
+    $("qrDownload").href = $("qrCanvas").toDataURL("image/png");
+    $("qrDownload").download = `vet-link-${petId}.png`;
+  });
+
+  renderQrState(pet.qrStatus || "active");
+  openModal("qrModal");
+}
+
+function renderQrState(status) {
+  const box = $("qrState");
+  const label = {
+    active: "This tag is live. Scanning it shows the emergency card and logs the scan.",
+    inactive: "This tag is paused. Scanning it shows nothing and no scan is logged.",
+    revoked: "This tag is revoked. The printed QR no longer resolves to anything."
+  }[status];
+
+  box.innerHTML = `
+    <p style="font-size:13.5px;color:var(--steel-mid);margin:0 0 6px;">${label}</p>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      ${status !== "active" ? '<button class="btn btn-primary btn-sm" data-qr-set="active">Activate tag</button>' : ""}
+      ${status === "active" ? '<button class="btn btn-ghost btn-sm" data-qr-set="inactive">Pause tag</button>' : ""}
+      ${status !== "revoked" ? '<button class="btn btn-danger btn-sm" data-qr-set="revoked">Revoke tag</button>' : ""}
+    </div>`;
+}
+
+$("qrState").addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-qr-set]");
+  if (!btn) return;
+  const next = btn.dataset.qrSet;
+  if (next === "revoked" &&
+      !confirm("Revoking removes the public record entirely. Anyone scanning the printed tag will see nothing. Continue?")) return;
+
+  const msg = $("qrMsg");
+  msg.className = "form-msg";
+  msg.textContent = "Updating tag…";
+  try {
+    await updateDoc(doc(db, PETS, qrPetId), { qrStatus: next, updatedAt: serverTimestamp() });
+
+    if (next === "revoked") {
+      await deleteDoc(doc(db, PUBLIC_TAGS, qrPetId));
+    } else {
+      const full = (await getDoc(doc(db, PETS, qrPetId))).data();
+      await setDoc(doc(db, PUBLIC_TAGS, qrPetId), publicProjection({ ...full, qrStatus: next, petId: qrPetId }));
+    }
+
+    msg.className = "form-msg ok";
+    msg.textContent = { active: "Tag activated.", inactive: "Tag paused.", revoked: "Tag revoked." }[next];
+    renderQrState(next);
+    await render();
+  } catch (err) {
+    console.error(err);
+    msg.className = "form-msg error";
+    msg.textContent = "Couldn't update the tag: " + err.message;
+  }
+});
+
+// ---------------------------------------------------------------------
+// Scan history
+// ---------------------------------------------------------------------
+async function openScans(petId) {
+  const pet = pets.find((p) => p.id === petId);
+  $("scanTitle").textContent = `${pet.name} — scan history`;
+  $("scanList").innerHTML =
+    '<p style="font-family:var(--font-mono);font-size:13px;color:var(--steel-dim);">Loading scans…</p>';
+  openModal("scanModal");
+
+  try {
+    const snap = await getDocs(query(
+      collection(db, PETS, petId, SCANS),
+      orderBy("scannedAt", "desc"),
+      limit(100)
+    ));
+
+    if (snap.empty) {
+      $("scanList").innerHTML =
+        '<p style="color:var(--steel-mid);font-size:14px;">No one has scanned this tag yet. Every scan will appear here with its time, device and — if the finder shares it — their location.</p>';
+      return;
+    }
+
+    $("scanList").innerHTML = snap.docs.map((d) => {
+      const s = d.data();
+      const coords = (s.latitude != null && s.longitude != null)
+        ? `<a href="https://www.google.com/maps?q=${s.latitude},${s.longitude}" target="_blank" rel="noopener">${s.latitude.toFixed(5)}, ${s.longitude.toFixed(5)}${s.accuracy ? ` (±${Math.round(s.accuracy)}m)` : ""}</a>`
+        : "not shared";
+      return `
+        <div class="scan-row">
+          <div class="when">${esc(fmtDate(s.scannedAt))}</div>
+          <div class="line"><span>Location</span><span>${coords}</span></div>
+          <div class="line"><span>IP</span><span>${esc(s.ip || "unavailable")}</span></div>
+          <div class="line"><span>Device</span><span>${esc(s.platform || "unknown")}</span></div>
+          <div class="line"><span>Browser</span><span>${esc((s.userAgent || "unknown").slice(0, 90))}</span></div>
+          ${s.referrer ? `<div class="line"><span>Came from</span><span>${esc(s.referrer)}</span></div>` : ""}
+        </div>`;
+    }).join("");
+  } catch (err) {
+    console.error(err);
+    $("scanList").innerHTML = `<div class="notice">Couldn't load scans: ${esc(err.message)}</div>`;
+  }
+}
+
+// ---------------------------------------------------------------------
+// Delete
+// ---------------------------------------------------------------------
+async function deletePet(petId) {
+  const pet = pets.find((p) => p.id === petId);
+  if (!confirm(`Delete ${pet.name}'s record, tag and scan history? This can't be undone.`)) return;
+
+  try {
+    // Scans first, then the public tag (its rule reads pets/{id}), then the record.
+    const scans = await getDocs(query(collection(db, PETS, petId, SCANS), limit(300)));
+    await Promise.all(scans.docs.map((s) => deleteDoc(s.ref)));
+    await deleteDoc(doc(db, PUBLIC_TAGS, petId)).catch(() => {});
+    await deleteDoc(doc(db, PETS, petId));
+    await render();
+  } catch (err) {
+    console.error(err);
+    alert("Couldn't delete: " + err.message);
+  }
+}
+
+render();
+</script>
+</body>
+</html>

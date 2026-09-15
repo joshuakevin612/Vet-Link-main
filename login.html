@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vet Link — Log in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Text:wght@500;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="vetlink-ui.css">
+<style>
+  .auth-stage{
+    min-height:calc(100vh - 71px);
+    display:flex;align-items:center;justify-content:center;
+    padding:48px 20px;
+  }
+  .auth-card{width:100%;max-width:440px;}
+  .auth-card h1{font-size:44px;line-height:.95;margin:14px 0 10px;}
+  .auth-card .sub{color:var(--steel-light);font-size:15px;margin:0 0 28px;}
+  .auth-alt{
+    margin-top:22px;padding-top:18px;
+    border-top:1px dashed rgba(203,210,217,.18);
+    font-size:13.5px;color:var(--steel-mid);
+    display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  }
+  .auth-alt a{color:var(--vial-mint);}
+</style>
+</head>
+<body>
+
+<header class="site-nav">
+  <div class="nav-inner">
+    <a href="index.html" class="wordmark"><span class="dot"></span>VET LINK</a>
+    <nav class="links">
+      <a href="index.html">Home</a>
+      <span data-nav-auth><a href="signup.html" class="nav-cta">Sign up</a></span>
+      <span data-nav-user><a href="dashboard.html" class="nav-cta">Dashboard</a></span>
+    </nav>
+  </div>
+</header>
+
+<main class="auth-stage">
+  <div class="auth-card panel">
+    <p class="eyebrow">Owner access</p>
+    <h1>Log in</h1>
+    <p class="sub">Pet records are private. Log in to reach your dashboard.</p>
+
+    <form id="loginForm" novalidate>
+      <div class="field-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" autocomplete="email" required placeholder="you@example.com">
+      </div>
+      <div class="field-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" autocomplete="current-password" required placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn btn-primary" id="submitBtn" style="width:100%;">Log in</button>
+      <p class="form-msg" id="msg"></p>
+    </form>
+
+    <div class="auth-alt">
+      <span>New here? <a href="signup.html">Create an account</a></span>
+      <button type="button" class="linkish" id="resetBtn" style="text-transform:none;font-size:13.5px;">Forgot password?</button>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+  import { logIn, resendVerification, resetPassword, authErrorMessage, wireNav, watchAuth } from "./auth.js";
+
+  wireNav();
+
+  const form = document.getElementById("loginForm");
+  const msg = document.getElementById("msg");
+  const btn = document.getElementById("submitBtn");
+  const emailEl = document.getElementById("email");
+  const pwEl = document.getElementById("password");
+
+  const params = new URLSearchParams(location.search);
+  const next = params.get("next") || "dashboard.html";
+
+  function say(text, kind = "") {
+    msg.className = "form-msg" + (kind ? " " + kind : "");
+    msg.innerHTML = text;
+  }
+
+  if (params.get("verify")) {
+    say("Confirm your email with the link we sent, then log in.", "error");
+  }
+
+  // Already logged in and verified? Skip the form.
+  watchAuth((user) => {
+    if (user && user.emailVerified) location.replace(next);
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    btn.disabled = true;
+    say("Checking…");
+    try {
+      await logIn({ email: emailEl.value.trim(), password: pwEl.value });
+      location.href = next;
+    } catch (err) {
+      if (err.code === "auth/email-not-verified") {
+        say("This account isn't verified yet. We've sent a new link to " +
+            emailEl.value.trim() + " — open it, then log in.", "error");
+      } else {
+        say(authErrorMessage(err), "error");
+      }
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", async () => {
+    const email = emailEl.value.trim();
+    if (!email) { say("Enter your email above first, then tap reset.", "error"); return; }
+    try {
+      await resetPassword(email);
+      say("Password reset link sent to " + email + ".", "ok");
+    } catch (err) {
+      say(authErrorMessage(err), "error");
+    }
+  });
+</script>
+</body>
+</html>
