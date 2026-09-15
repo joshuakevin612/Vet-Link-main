@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
 <title>Vet Link — Pet Profile</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Stencil+Text:wght@700;900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -29,6 +30,18 @@
     border-radius:24px;
     overflow:hidden;
   }
+  .lost-banner{
+    background:var(--tag-orange); color:var(--navy-deep);
+    text-align:center; padding:14px 18px;
+  }
+  .lost-banner strong{
+    display:block; font-family:var(--font-display);
+    text-transform:uppercase; font-size:26px; line-height:1;
+  }
+  .lost-banner span{
+    font-family:var(--font-mono); font-size:11.5px;
+    letter-spacing:.06em; display:block; margin-top:6px;
+  }
   .card-head{
     background:var(--navy-panel-2);
     padding:28px 24px 22px;
@@ -50,27 +63,15 @@
     font-family:var(--font-display); text-transform:uppercase;
     font-size:34px; margin:0;
   }
-  .status-badge{
-    display:inline-flex; align-items:center; gap:6px;
-    font-family:var(--font-mono); font-size:11px; letter-spacing:.06em;
-    text-transform:uppercase; color:var(--vial-mint);
-    margin-top:10px;
-  }
-  .status-badge::before{content:"●";}
   .section{padding:22px 24px; border-bottom:1px solid rgba(203,210,217,.1);}
   .section:last-child{border-bottom:none;}
   .section h2{
     font-family:var(--font-mono); font-size:11px; letter-spacing:.1em;
     text-transform:uppercase; color:var(--steel-dim); margin:0 0 12px;
   }
-  .row{
-    display:flex; justify-content:space-between; gap:12px;
-    font-size:14px; padding:8px 0;
-    border-top:1px dashed rgba(203,210,217,.12);
-  }
-  .row:first-child{border-top:none;}
-  .row span:first-child{color:var(--steel-mid);}
-  .row span:last-child{color:var(--white); text-align:right;}
+  .section p.body{font-size:14px;color:var(--steel-light);margin:0;}
+  .section.alert{background:rgba(255,92,41,.07);}
+  .section.alert h2{color:var(--tag-orange);}
   .contact-btn{
     display:block; text-align:center; text-decoration:none;
     background:var(--tag-orange); color:var(--navy-deep);
@@ -78,125 +79,206 @@
     text-transform:uppercase; font-size:13px;
     padding:14px; border-radius:100px; margin-top:6px;
   }
-  .found-note{
-    font-size:13px; color:var(--steel-mid); margin:0 0 14px;
+  .ghost-btn{
+    display:block;width:100%;text-align:center;cursor:pointer;
+    background:none;border:1px solid rgba(203,210,217,.3);
+    color:var(--steel-light);
+    font-family:var(--font-mono);font-size:12px;letter-spacing:.05em;
+    text-transform:uppercase;padding:12px;border-radius:100px;margin-top:10px;
   }
+  .ghost-btn:hover{border-color:var(--vial-mint);color:var(--vial-mint);}
+  .ghost-btn:disabled{opacity:.6;cursor:default;}
+  .found-note{font-size:13px; color:var(--steel-mid); margin:0 0 14px;}
+  .share-note{font-size:12px;color:var(--steel-dim);margin:10px 0 0;}
   .footer-note{
     text-align:center; font-family:var(--font-mono); font-size:10px;
     color:var(--steel-dim); letter-spacing:.05em; padding:18px 24px;
   }
-  .directory{
-    text-align:center; padding:60px 20px;
-  }
-  .directory a{
-    display:block; margin-top:10px; color:var(--vial-mint);
-  }
+  .directory{text-align:center; padding:60px 20px;}
 </style>
 </head>
 <body>
 <div id="app"></div>
 
 <script type="module">
-  // ---------------------------------------------------------------
-  // FIREBASE CONFIG — must match the SAME project/config used in
-  // index.html's registration form, or this page won't find any records.
-  // ---------------------------------------------------------------
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+// =====================================================================
+// PUBLIC SCAN VIEW
+//
+// This page reads exactly one document: publicTags/{petId}. That document
+// carries emergency information and nothing else — no owner email, no
+// address, no ownerId, no account data. The full record in pets/{petId}
+// is unreadable without the owner's verified session, enforced by
+// firestore.rules rather than by what this page chooses to render.
+// =====================================================================
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCYqnAwl_MaSA7qv3FkCUa9-VUN_OhJwjc",
-    authDomain: "vetlink-b046b.firebaseapp.com",
-    projectId: "vetlink-b046b",
-    storageBucket: "vetlink-b046b.firebasestorage.app",
-    messagingSenderId: "601192030186",
-    appId: "1:601192030186:web:704cceb573449670691c93"
+import { doc, getDoc, setDoc, updateDoc, collection, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { db, PETS, PUBLIC_TAGS, SCANS } from "./firebase-config.js";
+
+const app = document.getElementById("app");
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g,
+  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function showMessage(title, message) {
+  app.innerHTML = `
+    <div class="card">
+      <div class="directory">
+        <p class="eyebrow" style="justify-content:center;display:flex;">Vet Link</p>
+        <h1 style="font-size:26px;">${esc(title)}</h1>
+        <p style="color:var(--steel-mid);font-size:14px;margin-top:10px;">${esc(message)}</p>
+      </div>
+    </div>`;
+}
+
+async function render() {
+  const petId = new URLSearchParams(window.location.search).get("pet");
+  if (!petId) {
+    showMessage("No tag in this link",
+      "This page opens from a tag, e.g. ?pet=milo-a1b2. Scan a Vet Link tag to see a pet's emergency card.");
+    return;
+  }
+
+  app.innerHTML = `<div class="card"><div class="directory"><p style="color:var(--steel-mid);font-family:var(--font-mono);font-size:13px;">Loading emergency card…</p></div></div>`;
+
+  let tag;
+  try {
+    const snap = await getDoc(doc(db, PUBLIC_TAGS, petId));
+    if (!snap.exists()) {
+      showMessage("Tag not active",
+        "This tag isn't registered, or its owner has revoked it. If you've found a pet, contact a local vet or shelter.");
+      return;
+    }
+    tag = snap.data();
+  } catch (err) {
+    // A paused tag fails the security rule rather than returning a
+    // document, so both land here.
+    console.error(err);
+    showMessage("Tag not active",
+      "This tag is paused or revoked by its owner, so there's nothing to show right now.");
+    return;
+  }
+
+  const meds = Array.isArray(tag.medications) && tag.medications.length
+    ? tag.medications.map((m) => esc(m.name) + (m.note ? " — " + esc(m.note) : "")).join("<br>")
+    : "None recorded";
+
+  const phone = (tag.contactPhone || "").replace(/\s/g, "");
+
+  app.innerHTML = `
+    <div class="card">
+      ${tag.isLost ? `
+        <div class="lost-banner">
+          <strong>Lost pet</strong>
+          <span>Reported missing by the owner — please call now</span>
+        </div>` : ""}
+
+      <div class="card-head">
+        <p class="eyebrow">Vet Link · Emergency card</p>
+        <div class="avatar">${esc((tag.name || "?")[0].toUpperCase())}</div>
+        <h1>${esc(tag.name)}</h1>
+        ${tag.species ? `<p style="color:var(--steel-mid);font-size:13px;margin:6px 0 0;">${esc(tag.species)}</p>` : ""}
+      </div>
+
+      <div class="section">
+        <p class="found-note">Found this pet? Call the owner directly — the line below reaches them.</p>
+        ${phone
+          ? `<a class="contact-btn" href="tel:${esc(phone)}">Call ${esc(tag.contactName || "owner")}</a>`
+          : `<p class="body">No contact number on this tag. Take the pet to a nearby vet or shelter.</p>`}
+        <button class="ghost-btn" id="shareLoc">Share my location with the owner</button>
+        <p class="share-note" id="shareNote">Optional. Sends only the coordinates your phone reports, once.</p>
+      </div>
+
+      <div class="section alert">
+        <h2>Allergies</h2>
+        <p class="body">${tag.allergies ? esc(tag.allergies) : "None recorded"}</p>
+      </div>
+
+      <div class="section">
+        <h2>Medications</h2>
+        <p class="body">${meds}</p>
+      </div>
+
+      <div class="section">
+        <h2>Medical conditions</h2>
+        <p class="body">${tag.medicalHistory ? esc(tag.medicalHistory) : "None recorded"}</p>
+      </div>
+    </div>
+    <p class="footer-note">VET LINK — GROUP 6 — EMERGENCY CARD</p>
+  `;
+
+  logScan(petId);
+}
+
+// ---------------------------------------------------------------------
+// Scan logging
+//
+// Written to pets/{petId}/scans — the finder can create a scan but can't
+// read the log back. Coordinates are only attached when the finder taps
+// the button and the browser's own permission prompt is accepted.
+// ---------------------------------------------------------------------
+async function logScan(petId) {
+  const scanRef = doc(collection(db, PETS, petId, SCANS));
+
+  let ip = "";
+  try {
+    const res = await fetch("https://api.ipify.org?format=json");
+    ip = (await res.json()).ip || "";
+  } catch { /* blocked or offline — the rest of the log still writes */ }
+
+  const entry = {
+    petId,
+    scannedAt: serverTimestamp(),
+    userAgent: navigator.userAgent || "",
+    platform: navigator.userAgentData?.platform || navigator.platform || "",
+    language: navigator.language || "",
+    referrer: document.referrer || "",
+    ip
   };
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  function showDirectory(app, message) {
-    app.innerHTML = `
-      <div class="card">
-        <div class="directory">
-          <p class="eyebrow" style="justify-content:center;display:flex;">Vet Link</p>
-          <h1 style="font-size:26px;">No pet found</h1>
-          <p style="color:var(--steel-mid);font-size:14px;margin-top:10px;">${message}</p>
-        </div>
-      </div>`;
+  try {
+    await setDoc(scanRef, entry);
+  } catch (err) {
+    console.warn("Scan not logged:", err);
+    return;
   }
 
-  async function render() {
-    const params = new URLSearchParams(window.location.search);
-    const petId = params.get("pet");
-    const app = document.getElementById("app");
+  const btn = document.getElementById("shareLoc");
+  const note = document.getElementById("shareNote");
+  if (!btn) return;
 
-    if (!petId) {
-      showDirectory(app, "This page opens with a pet ID in the link, e.g. ?pet=milo-a1b2 — scan a real tag or register a pet from the main site.");
+  btn.addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      note.textContent = "This browser can't share location.";
       return;
     }
+    btn.disabled = true;
+    btn.textContent = "Getting location…";
 
-    app.innerHTML = `<div class="card"><div class="directory"><p style="color:var(--steel-mid);font-family:var(--font-mono);font-size:13px;">Loading record…</p></div></div>`;
-
-    let pet;
-    try {
-      const snap = await getDoc(doc(db, "pets", petId));
-      if (!snap.exists()) {
-        showDirectory(app, `No record found for "${petId}". Double-check the tag's link, or this pet may not be registered yet.`);
-        return;
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        await updateDoc(scanRef, {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          locationSharedAt: serverTimestamp()
+        });
+        btn.textContent = "Location sent";
+        note.textContent = "The owner can now see where this tag was scanned.";
+      } catch (err) {
+        console.warn(err);
+        btn.disabled = false;
+        btn.textContent = "Share my location with the owner";
+        note.textContent = "Couldn't send the location. Calling is the fastest route.";
       }
-      pet = snap.data();
-    } catch (err) {
-      console.error(err);
-      showDirectory(app, "Couldn't reach the record database. Check the Firebase config in this page's code.");
-      return;
-    }
+    }, () => {
+      btn.disabled = false;
+      btn.textContent = "Share my location with the owner";
+      note.textContent = "Location permission declined — no coordinates were sent.";
+    }, { enableHighAccuracy: true, timeout: 10000 });
+  });
+}
 
-    const vaccinations = Array.isArray(pet.vaccinations) && pet.vaccinations.length
-      ? pet.vaccinations.map(v => `${v.name}${v.date ? " · " + v.date : ""}${v.status ? " — " + v.status : ""}`).join("<br>")
-      : "Not provided";
-    const medications = Array.isArray(pet.medications) && pet.medications.length
-      ? pet.medications.map(m => `${m.name}${m.note ? " — " + m.note : ""}`).join("<br>")
-      : "Not provided";
-    const ownerName = (pet.owner && pet.owner.name) || "owner";
-    const ownerPhone = (pet.owner && pet.owner.phone) || "";
-
-    app.innerHTML = `
-      <div class="card">
-        <div class="card-head">
-          <p class="eyebrow">Vet Link · Pet Profile</p>
-          <div class="avatar">${(pet.name || "?")[0].toUpperCase()}</div>
-          <h1>${pet.name}</h1>
-          <p style="color:var(--steel-mid);font-size:13px;margin:6px 0 0;">${pet.species || ""}</p>
-          ${pet.ownershipVerified ? '<div class="status-badge">Ownership verified</div>' : ''}
-        </div>
-
-        <div class="section">
-          <p class="found-note">Found this pet? Contact the owner directly below.</p>
-          <a class="contact-btn" href="tel:${ownerPhone.replace(/\s/g,'')}">Call ${ownerName}</a>
-        </div>
-
-        <div class="section">
-          <h2>Vaccinations</h2>
-          <p style="font-size:14px;color:var(--steel-light);margin:0;">${vaccinations}</p>
-        </div>
-
-        <div class="section">
-          <h2>Medications</h2>
-          <p style="font-size:14px;color:var(--steel-light);margin:0;">${medications}</p>
-        </div>
-
-        <div class="section">
-          <h2>Medical history</h2>
-          <p style="font-size:14px;color:var(--steel-light);margin:0;">${pet.medicalHistory || "Not provided"}</p>
-        </div>
-      </div>
-      <p class="footer-note">VET LINK — GROUP 6 — LIVE RECORD</p>
-    `;
-  }
-
-  render();
+render();
 </script>
 </body>
 </html>
