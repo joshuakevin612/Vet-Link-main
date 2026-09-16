@@ -214,7 +214,9 @@
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
       <a class="btn btn-ghost btn-sm" id="qrDownload" download="vet-link-tag.png">Download PNG</a>
       <a class="btn btn-ghost btn-sm" id="qrOpen" target="_blank" rel="noopener">Open scan page</a>
+      <button class="btn btn-danger btn-sm" id="qrRegen">Regenerate QR</button>
     </div>
+    <p style="font-size:12px;color:var(--steel-dim);margin:10px 0 0;">Regenerating swaps the tag's hidden token. Any sticker already printed with the old QR code stops working immediately — the pet record and scan history are untouched.</p>
     <div class="qr-state" id="qrState"></div>
     <p class="form-msg" id="qrMsg"></p>
   </div>
@@ -237,7 +239,7 @@ import {
   query, where, orderBy, limit, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-import { db, PETS, PUBLIC_TAGS, SCANS, publicProfileUrl } from "./firebase-config.js";
+import { db, PETS, PUBLIC_TAGS, SCANS, publicProfileUrl, newQrToken } from "./firebase-config.js";
 import { requireVerifiedUser, getOwnerProfile, wireNav } from "./auth.js";
 
 wireNav();
@@ -304,16 +306,20 @@ function publicProjection(pet) {
     contactName: pet.contactName || "",
     contactPhone: pet.contactPhone || "",
     qrStatus: pet.qrStatus || "active",
+    qrToken: pet.qrToken,
     updatedAt: serverTimestamp()
   };
 }
 
 async function savePet(petId, pet, { isNew }) {
+  const qrToken = pet.qrToken || newQrToken();
+
   // Private record first: the publicTags rule reads pets/{id}.ownerId to
   // decide whether this write is allowed, so it has to exist already.
   await setDoc(doc(db, PETS, petId), {
     ...pet,
     petId,
+    qrToken,
     ownerId: user.uid,
     ownerEmail: user.email,
     updatedAt: serverTimestamp(),
@@ -323,7 +329,7 @@ async function savePet(petId, pet, { isNew }) {
   if (pet.qrStatus === "revoked") {
     await deleteDoc(doc(db, PUBLIC_TAGS, petId)).catch(() => {});
   } else {
-    await setDoc(doc(db, PUBLIC_TAGS, petId), publicProjection({ ...pet, petId }));
+    await setDoc(doc(db, PUBLIC_TAGS, petId), publicProjection({ ...pet, petId, qrToken }));
   }
 }
 
@@ -565,17 +571,38 @@ async function toggleLost(petId, btn) {
 // QR tag: generate, activate, pause, revoke
 // ---------------------------------------------------------------------
 let qrPetId = null;
+let qrCurrentToken = null;
 
 async function openQr(petId) {
   qrPetId = petId;
-  const pet = pets.find((p) => p.id === petId) ||
-    { ...(await getDoc(doc(db, PETS, petId))).data(), id: petId };
+  let pet = pets.find((p) => p.id === petId);
+  if (!pet || !pet.qrToken) {
+    pet = { ...(await getDoc(doc(db, PETS, petId))).data(), id: petId };
+  }
 
-  const url = publicProfileUrl(petId);
+  // Older pets registered before qrToken existed won't have one yet —
+  // mint one now so every tag has a token to check against.
+  if (!pet.qrToken) {
+    pet.qrToken = newQrToken();
+    await updateDoc(doc(db, PETS, petId), { qrToken: pet.qrToken });
+    if (pet.qrStatus !== "revoked") {
+      await updateDoc(doc(db, PUBLIC_TAGS, petId), { qrToken: pet.qrToken }).catch(() => {});
+    }
+  }
+  qrCurrentToken = pet.qrToken;
+
+  renderQrCode(petId, qrCurrentToken);
   $("qrTitle").textContent = `${pet.name}'s tag`;
+  $("qrMsg").textContent = "";
+
+  renderQrState(pet.qrStatus || "active");
+  openModal("qrModal");
+}
+
+function renderQrCode(petId, token) {
+  const url = publicProfileUrl(petId, token);
   $("qrLink").textContent = url;
   $("qrOpen").href = url;
-  $("qrMsg").textContent = "";
 
   const wrap = $("qrWrap");
   wrap.innerHTML = '<canvas id="qrCanvas"></canvas>';
@@ -584,9 +611,6 @@ async function openQr(petId) {
     $("qrDownload").href = $("qrCanvas").toDataURL("image/png");
     $("qrDownload").download = `vet-link-${petId}.png`;
   });
-
-  renderQrState(pet.qrStatus || "active");
-  openModal("qrModal");
 }
 
 function renderQrState(status) {
@@ -604,6 +628,8 @@ function renderQrState(status) {
       ${status === "active" ? '<button class="btn btn-ghost btn-sm" data-qr-set="inactive">Pause tag</button>' : ""}
       ${status !== "revoked" ? '<button class="btn btn-danger btn-sm" data-qr-set="revoked">Revoke tag</button>' : ""}
     </div>`;
+
+  $("qrRegen").disabled = status === "revoked";
 }
 
 $("qrState").addEventListener("click", async (e) => {
@@ -634,6 +660,28 @@ $("qrState").addEventListener("click", async (e) => {
     console.error(err);
     msg.className = "form-msg error";
     msg.textContent = "Couldn't update the tag: " + err.message;
+  }
+});
+
+$("qrRegen").addEventListener("click", async () => {
+  if (!confirm("Any sticker already printed with the current QR code will stop working immediately. This pet's record and scan history stay exactly as they are. Continue?")) return;
+
+  const msg = $("qrMsg");
+  msg.className = "form-msg";
+  msg.textContent = "Regenerating…";
+  try {
+    const token = newQrToken();
+    await updateDoc(doc(db, PETS, qrPetId), { qrToken: token, updatedAt: serverTimestamp() });
+    await updateDoc(doc(db, PUBLIC_TAGS, qrPetId), { qrToken: token, updatedAt: serverTimestamp() }).catch(() => {});
+
+    qrCurrentToken = token;
+    renderQrCode(qrPetId, token);
+    msg.className = "form-msg ok";
+    msg.textContent = "New QR generated — download and print it, the old one is dead.";
+  } catch (err) {
+    console.error(err);
+    msg.className = "form-msg error";
+    msg.textContent = "Couldn't regenerate: " + err.message;
   }
 });
 
