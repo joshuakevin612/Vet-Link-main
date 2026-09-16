@@ -27,32 +27,9 @@ export const PUBLIC_TAGS = "publicTags"; // emergency-only projection, world-rea
 export const OWNERS = "owners";          // owner profile
 export const SCANS = "scans";            // subcollection of pets/{petId}
 
-// ---------------------------------------------------------------------
-// EmailJS — sends the "your tag was scanned" alert straight from the
-// browser, no server needed. Fill these in from your EmailJS dashboard
-// (emailjs.com → Email Services / Email Templates / Account → API Keys).
-// Leave PUBLIC_KEY empty to disable the alert without touching page code.
-// ---------------------------------------------------------------------
-export const EMAILJS_CONFIG = {
-  PUBLIC_KEY: "",     // Account → General → Public Key
-  SERVICE_ID: "",     // Email Services → your service's ID
-  TEMPLATE_ID: ""     // Email Templates → your template's ID
-};
-
-// A new random token per tag. Regenerating it (dashboard "Regenerate QR")
-// invalidates every previously printed sticker for that pet instantly,
-// even though the pet's record and petId stay the same.
-export function newQrToken() {
-  return Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
-}
-
 // Where a scanned QR code points. Change this if you host under a subpath.
-// `token` must match the pet's current qrToken or the public page treats
-// the tag as inactive — that's what makes "Regenerate QR" actually void
-// the old sticker instead of just relabeling the same live link.
-export function publicProfileUrl(petId, token) {
+export function publicProfileUrl(petId) {
   const base = window.location.origin +
     window.location.pathname.replace(/[^/]*$/, "");
-  const t = token ? `&t=${encodeURIComponent(token)}` : "";
-  return `${base}pet-profile.html?pet=${encodeURIComponent(petId)}${t}`;
+  return `${base}pet-profile.html?pet=${encodeURIComponent(petId)}`;
 }
