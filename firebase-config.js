@@ -9,12 +9,13 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-aut
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyCYqnAwl_MaSA7qv3FkCUa9-VUN_OhJwjc",
-  authDomain: "vetlink-b046b.firebaseapp.com",
-  projectId: "vetlink-b046b",
-  storageBucket: "vetlink-b046b.firebasestorage.app",
-  messagingSenderId: "601192030186",
-  appId: "1:601192030186:web:704cceb573449670691c93"
+  apiKey: "AIzaSyDm1Uk3CMwTN3U8T671lNB2K6a9AbYfCV4",
+  authDomain: "vet-link-e520b.firebaseapp.com",
+  projectId: "vet-link-e520b",
+  storageBucket: "vet-link-e520b.firebasestorage.app",
+  messagingSenderId: "103463753923",
+  appId: "1:103463753923:web:12120be1419ff0b8b7aa76",
+  measurementId: "G-B4XK19EMRL"
 };
 
 export const app = initializeApp(firebaseConfig);
