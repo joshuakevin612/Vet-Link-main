@@ -31,12 +31,13 @@
     overflow:hidden;
   }
   .lost-banner{
-    background:var(--tag-orange); color:var(--navy-deep);
-    text-align:center; padding:14px 18px;
+    background:#D62828; color:var(--white);
+    text-align:center; padding:16px 18px;
   }
   .lost-banner strong{
     display:block; font-family:var(--font-display);
     text-transform:uppercase; font-size:26px; line-height:1;
+    letter-spacing:.02em;
   }
   .lost-banner span{
     font-family:var(--font-mono); font-size:11.5px;
@@ -109,6 +110,20 @@
 // address, no ownerId, no account data. The full record in pets/{petId}
 // is unreadable without the owner's verified session, enforced by
 // firestore.rules rather than by what this page chooses to render.
+//
+// Location is never collected on page load. It is only requested, and
+// only sent, after the finder taps "Share my location" and the browser's
+// own permission prompt is accepted — see logScan() below. Anything that
+// silently geolocated every visitor to this link would geolocate anyone
+// who opened it, not just someone returning a lost pet, so that path was
+// deliberately left out.
+//
+// The "owner gets an email" alert lives in functions/index.js instead of
+// here: this page has no way to know the owner's address (publicTags
+// deliberately excludes it), and it shouldn't gain one. The Cloud
+// Function reads it server-side via the Admin SDK and fires only once a
+// scan document picks up latitude/longitude — i.e. only after the finder
+// consents — never on page load.
 // =====================================================================
 
 import { doc, getDoc, setDoc, updateDoc, collection, serverTimestamp }
@@ -140,21 +155,32 @@ async function render() {
 
   app.innerHTML = `<div class="card"><div class="directory"><p style="color:var(--steel-mid);font-family:var(--font-mono);font-size:13px;">Loading emergency card…</p></div></div>`;
 
+  const token = new URLSearchParams(window.location.search).get("t");
+
   let tag;
   try {
     const snap = await getDoc(doc(db, PUBLIC_TAGS, petId));
     if (!snap.exists()) {
       showMessage("Tag not active",
-        "This tag isn't registered, or its owner has revoked it. If you've found a pet, contact a local vet or shelter.");
+        "This tag has been revoked or deactivated by the owner.");
       return;
     }
     tag = snap.data();
+
+    // A regenerated tag keeps the same petId but issues a new qrToken —
+    // that's what makes "Regenerate QR" on the dashboard void every
+    // previously printed sticker without touching the pet's record.
+    if (tag.qrToken && token && tag.qrToken !== token) {
+      showMessage("Tag not active",
+        "This tag has been revoked or deactivated by the owner.");
+      return;
+    }
   } catch (err) {
-    // A paused tag fails the security rule rather than returning a
-    // document, so both land here.
+    // A paused or revoked tag fails the security rule rather than
+    // returning a document, so both land here.
     console.error(err);
     showMessage("Tag not active",
-      "This tag is paused or revoked by its owner, so there's nothing to show right now.");
+      "This tag has been revoked or deactivated by the owner.");
     return;
   }
 
@@ -168,7 +194,7 @@ async function render() {
     <div class="card">
       ${tag.isLost ? `
         <div class="lost-banner">
-          <strong>Lost pet</strong>
+          <strong>Alert: this pet is marked as lost</strong>
           <span>Reported missing by the owner — please call now</span>
         </div>` : ""}
 
@@ -185,7 +211,7 @@ async function render() {
           ? `<a class="contact-btn" href="tel:${esc(phone)}">Call ${esc(tag.contactName || "owner")}</a>`
           : `<p class="body">No contact number on this tag. Take the pet to a nearby vet or shelter.</p>`}
         <button class="ghost-btn" id="shareLoc">Share my location with the owner</button>
-        <p class="share-note" id="shareNote">Optional. Sends only the coordinates your phone reports, once.</p>
+        <p class="share-note" id="shareNote">Optional. Sends only the coordinates your phone reports, once — the owner gets an email with a map link the moment you do.</p>
       </div>
 
       <div class="section alert">
@@ -206,7 +232,7 @@ async function render() {
     <p class="footer-note">VET LINK — GROUP 6 — EMERGENCY CARD</p>
   `;
 
-  logScan(petId);
+  logScan(petId, tag.qrToken || "");
 }
 
 // ---------------------------------------------------------------------
@@ -216,7 +242,7 @@ async function render() {
 // read the log back. Coordinates are only attached when the finder taps
 // the button and the browser's own permission prompt is accepted.
 // ---------------------------------------------------------------------
-async function logScan(petId) {
+async function logScan(petId, qrToken) {
   const scanRef = doc(collection(db, PETS, petId, SCANS));
 
   let ip = "";
@@ -227,6 +253,7 @@ async function logScan(petId) {
 
   const entry = {
     petId,
+    qrToken,
     scannedAt: serverTimestamp(),
     userAgent: navigator.userAgent || "",
     platform: navigator.userAgentData?.platform || navigator.platform || "",
